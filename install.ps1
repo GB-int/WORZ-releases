@@ -9,6 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version Latest
+if ($PSVersionTable.PSEdition -eq 'Desktop') { $env:PSModulePath = Join-Path $PSHOME 'Modules' }
 
 $ExpectedPublisherSubject = 'CN=WORZ Local Development Code Signing'
 $ExpectedPublisherThumbprint = '49CA7AE2B77CCDAA1FC594DA8AD8D5691418F0AC'
@@ -93,7 +94,7 @@ function Assert-WorzReleaseManifest($Manifest, [string]$Tag, [string]$Version, [
     Assert (-not [string]::IsNullOrWhiteSpace([string]$Manifest.buildProvenanceId)) 'release manifest provenance is missing.'
     Assert ([string]$Manifest.publisher.label -ceq 'GB-int/WORZ') 'release manifest publisher label is invalid.'
     Assert ([string]$Manifest.publisher.subject -ceq $ExpectedPublisherSubject) 'release manifest publisher subject does not match the bootstrap pin.'
-    Assert (Get-NormalizedThumbprint([string]$Manifest.publisher.thumbprint) -ceq $ExpectedPublisherThumbprint) 'release manifest publisher thumbprint does not match the bootstrap pin.'
+    Assert ((Get-NormalizedThumbprint ([string]$Manifest.publisher.thumbprint)) -ceq $ExpectedPublisherThumbprint) 'release manifest publisher thumbprint does not match the bootstrap pin.'
 
     $manifestAssets = @($Manifest.expectedReleaseAssets | ForEach-Object { [string]$_ })
     $difference = @(Compare-Object -ReferenceObject @($ExpectedAssets | Sort-Object) -DifferenceObject @($manifestAssets | Sort-Object))
@@ -382,8 +383,8 @@ Invoke-WorzPublicBootstrap
 # SIG # Begin signature block
 # MIIHTgYJKoZIhvcNAQcCoIIHPzCCBzsCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCBqbJiVPhP81OoP
-# acCH4DgAplsKGr9LfXRsnz0il9N926CCBDAwggQsMIIClKADAgECAhATnEYQOxBl
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCD1TF7CYzH4EizQ
+# YidSGX6zFxtWQhNIN9ViHBCs7f0JL6CCBDAwggQsMIIClKADAgECAhATnEYQOxBl
 # nEQlh/r+4hbDMA0GCSqGSIb3DQEBCwUAMC4xLDAqBgNVBAMMI1dPUlogTG9jYWwg
 # RGV2ZWxvcG1lbnQgQ29kZSBTaWduaW5nMB4XDTI2MDgzMTE3NTI0MVoXDTI5MDgz
 # MTE4MDI0MVowLjEsMCoGA1UEAwwjV09SWiBMb2NhbCBEZXZlbG9wbWVudCBDb2Rl
@@ -409,15 +410,15 @@ Invoke-WorzPublicBootstrap
 # AnACAQEwQjAuMSwwKgYDVQQDDCNXT1JaIExvY2FsIERldmVsb3BtZW50IENvZGUg
 # U2lnbmluZwIQE5xGEDsQZZxEJYf6/uIWwzANBglghkgBZQMEAgEFAKCBhDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCAD
-# Jglj9komEPIV5WYoVBgzS1uCzXxlKDbN6OtZpM7PczANBgkqhkiG9w0BAQEFAASC
-# AYB9aKXtN21XC9AbUAeNf1QpE3Ai+b3I/orQKd4O5ZXjnYSj+Oy6nvvS6OnFPBaM
-# ssJhv1URmyKKDbX8XsXGuAMuOZ2OfP5o4S0zGqwBUybCiZel+bYRyn39bW7qIVQd
-# VczC8nV48vJXsoEKUBoZGw1P3pbM1UpYAs5o4Owl9UO2UZ1gDmG4Jz9/D0TQDTpo
-# +PjaB0uPuinT4KjveLB4fwkObDrgWb7xEVwOVDklIQUsGkj/O4nt2xLei9/vtHeB
-# dh8wTNjmH1Z6r/SrSmyFC7eErg9dAN0bvlK2jmLnMNdT9Mxu+L4YR/rxpEj/+pF8
-# alDlXPDCWxNJjzY9PCiMVMzwrggJwsLkn6EpOvD55fWV6RLE1KKXiSBob9py21Zm
-# 0UAX9R5DOHywq54MvJx2yCcO/7R9l03UD0KblCzUDtlXd49VsgQ6scN5VQ3k8mDa
-# d6WhXKAU/kwplMQ2g0kVLZVHXX9UoqV9EOsvmCDktBTLFUt6mPqKoZ1CCCLB7KbP
-# QhI=
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCBT
+# yB5zM4oU0C84ps2cT+2s3uXPZpUK5tNUZbq82iSLQzANBgkqhkiG9w0BAQEFAASC
+# AYDDiFFY8bTvq7HVrUlVIUdzqvqDxV1/oy4vLP2Ld/TkGuj6exfDIYBePhcSk1xN
+# dtYB3IcD1w0JLWMlQCxLn4BjOyCdGOkFHqLbdcQW3tDElsxmhykvB8U8oSDfIAzL
+# DyUeycgXbYcLrbbeJ0rp8INqxhXT+17uZLnemTtumjVVgOtWgX0u3EzUAB4MIzu5
+# 5QB1Qtz4pICwdOgQ1ttFZ4ndCst/LD/OGB2OziGAq1sbSQoWHgsZpx5cr3dZSTzQ
+# t9I46T5YpSfiPER3TUYdhJomFnDp8NTKCEYLgGNOuEjBExxO50DFgJ3b23vDEXAD
+# JBLaWmB2E/g6feYnzRFieO0h5RHzCpNHzZSR0GBnSe76Nfl8r4WB4Qdf7R4YlKud
+# rJkbXLzOm/AoknDeq7yz+EyCqU1rFsrcgOkHaT8XwYL9Sbrv1b4JlrKNZqfK2SXa
+# ir2eDDm1HvMawink4Z84SfXS1ZKzqN9Uzjf/zvK1nhAq0e8LfDAUctMQg4N+EDB2
+# gAw=
 # SIG # End signature block

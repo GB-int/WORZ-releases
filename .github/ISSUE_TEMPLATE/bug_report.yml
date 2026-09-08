@@ -1,0 +1,60 @@
+name: Сообщить об ошибке
+description: Воспроизводимая ошибка в публичной alpha WORZ
+title: "[Bug]: "
+labels:
+  - bug
+  - alpha-feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за проверку WORZ. Не прикладывайте пароли, cookies, токены, полные журналы авторизации или экспорт рабочего пространства без предварительной очистки.
+  - type: input
+    id: version
+    attributes:
+      label: Версия WORZ
+      description: Указана в настройках и в имени GitHub Release.
+      placeholder: 1.0.0-alpha.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Версия Windows
+      placeholder: Windows 11 24H2 x64
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: |
+        1. Открыть ...
+        2. Нажать ...
+        3. Наблюдать ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемый результат
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактический результат
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Очищенные материалы
+      description: Скриншоты или короткий фрагмент лога без персональных данных и секретов.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Проверка данных
+      options:
+        - label: Я удалил(а) из материалов пароли, cookies, токены, адреса аккаунтов и другие персональные данные.
+          required: true

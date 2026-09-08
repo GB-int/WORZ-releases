@@ -1,0 +1,51 @@
+name: Отзыв об alpha
+description: Предложение, впечатление или неудобный пользовательский сценарий
+title: "[Alpha feedback]: "
+labels:
+  - alpha-feedback
+body:
+  - type: markdown
+    attributes:
+      value: Спасибо за раннюю проверку WORZ. Один issue должен описывать одну проблему или идею.
+  - type: input
+    id: version
+    attributes:
+      label: Версия WORZ
+      placeholder: 1.0.0-alpha.1
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options:
+        - Установка и первый запуск
+        - Панель запуска и профили
+        - Вкладки и рабочая область
+        - Split view
+        - Авторизация на сайтах
+        - Расширения и VOT
+        - Производительность и RAM Saver
+        - Другое
+    validations:
+      required: true
+  - type: textarea
+    id: experience
+    attributes:
+      label: Что произошло и чего вы ожидали
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: Почему это важно
+      description: Как это влияет на реальную работу.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Приватность
+      options:
+        - label: В отзыве нет паролей, cookies, токенов и персональных данных.
+          required: true

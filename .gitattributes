@@ -1,0 +1,3 @@
+# Authenticode-signed PowerShell must remain byte-for-byte stable in Git and raw downloads.
+/install.ps1 -text
+/src/preload.cjs text eol=lf

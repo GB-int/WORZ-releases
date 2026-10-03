@@ -147,7 +147,15 @@ function Assert-WorzChecksums($Manifest, [string]$ChecksumsPath) {
     }
 }
 
+function Assert-WorzProtectedInstalledPath([string]$ExecutablePath) {
+    $programFiles = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)
+    Assert (-not [string]::IsNullOrWhiteSpace($programFiles)) 'Windows Program Files known folder is unavailable.'
+    $expectedPath = Join-Path $programFiles 'WORZ\WORZ.exe'
+    Assert ([IO.Path]::GetFullPath($ExecutablePath) -ieq [IO.Path]::GetFullPath($expectedPath)) 'WORZ must be installed in the protected machine-wide Program Files directory.'
+}
+
 function Assert-WorzInstalledApplication($Manifest, [string]$ExecutablePath) {
+    Assert-WorzProtectedInstalledPath $ExecutablePath
     $expected = $Manifest.installedApplication
     $evidence = Get-FileEvidence -Path $ExecutablePath
     Assert ([int64]$expected.sizeBytes -eq [int64]$evidence.SizeBytes) 'installed WORZ.exe size differs from the signed package evidence.'
@@ -222,14 +230,25 @@ function Save-InstallReceipt($Receipt) {
     )
 }
 
-function Invoke-WorzSignedInstaller([string]$InstallerPath, [bool]$SilentMode) {
-    $arguments = if ($SilentMode) { @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-') } else { @() }
-    $timer = [Diagnostics.Stopwatch]::StartNew()
-    $process = if ($SilentMode) {
-        Start-Process -FilePath $InstallerPath -ArgumentList $arguments -Wait -PassThru
-    } else {
-        Start-Process -FilePath $InstallerPath -Wait -PassThru
+function Invoke-WorzSignedInstaller([string]$InstallerPath, [bool]$SilentMode, $Manifest, [string]$ArtifactName, [string]$InstallationDirectory = '', [scriptblock]$OnStarted = $null) {
+    $arguments = @('/CLOSEAPPLICATIONS')
+    if ($SilentMode) { $arguments += @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-') }
+    if (-not [string]::IsNullOrWhiteSpace($InstallationDirectory)) {
+        Assert ($InstallationDirectory -notmatch '["\r\n]') 'Invalid installer directory.'
+        Assert-WorzProtectedInstalledPath (Join-Path $InstallationDirectory 'WORZ.exe')
+        $arguments += '/DIR="{0}"' -f [IO.Path]::GetFullPath($InstallationDirectory)
     }
+    # Обновлено: 2026-10-01 20:50 +03:00 — проверка и запуск под одним installer lease.
+    $lease = [IO.File]::Open($InstallerPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    try {
+    $null = Assert-ArtifactEvidence $Manifest $ArtifactName (Get-FileEvidence $InstallerPath)
+    Assert-SamePublisher (Get-ValidAuthenticodeIdentity $InstallerPath 'Installer under launch lease') 'Installer under launch lease'
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    # Only the signed installer is elevated. Cancellation occurs before OnStarted/ready.
+    $process = Start-Process -FilePath $InstallerPath -ArgumentList $arguments -Verb RunAs -PassThru
+    if ($null -ne $OnStarted) { & $OnStarted }
+    $process.WaitForExit()
+    $process.Refresh()
     $timer.Stop()
     Assert ($process.ExitCode -in @(0, 1641, 3010)) "installer exited with code $($process.ExitCode)."
     return [pscustomobject]@{
@@ -237,15 +256,14 @@ function Invoke-WorzSignedInstaller([string]$InstallerPath, [bool]$SilentMode) {
         ExitCode = $process.ExitCode
         DurationMs = [int]$timer.ElapsedMilliseconds
     }
+    } finally { $lease.Dispose() }
 }
 
 function Get-WorzInstalledExecutable {
-    $candidates = @(
-        (Join-Path $env:LOCALAPPDATA 'Programs\WORZ\WORZ.exe'),
-        (Join-Path $env:ProgramFiles 'WORZ\WORZ.exe')
-    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
-    $executable = $candidates | Select-Object -First 1
-    Assert (-not [string]::IsNullOrWhiteSpace([string]$executable)) 'installed WORZ.exe was not found.'
+    $programFiles = [Environment]::GetFolderPath([Environment+SpecialFolder]::ProgramFiles)
+    Assert (-not [string]::IsNullOrWhiteSpace($programFiles)) 'Windows Program Files known folder is unavailable.'
+    $executable = Join-Path $programFiles 'WORZ\WORZ.exe'
+    Assert (Test-Path -LiteralPath $executable -PathType Leaf) 'protected machine-wide WORZ.exe was not found.'
     return [string]$executable
 }
 
@@ -331,7 +349,7 @@ function Invoke-WorzPublicBootstrap {
 
         $installerPath = Join-Path $tempRoot $installerName
         Assert-SamePublisher -Identity (Get-ValidAuthenticodeIdentity -Path $installerPath -Label 'Installer') -Label 'Installer'
-        $installResult = Invoke-WorzSignedInstaller -InstallerPath $installerPath -SilentMode $Silent
+        $installResult = Invoke-WorzSignedInstaller -InstallerPath $installerPath -SilentMode $Silent -Manifest $manifest -ArtifactName $installerName
         $worzExecutable = Get-WorzInstalledExecutable
         Assert-WorzInstalledApplication -Manifest $manifest -ExecutablePath $worzExecutable
         Assert-SamePublisher -Identity (Get-ValidAuthenticodeIdentity -Path $worzExecutable -Label 'Installed WORZ.exe') -Label 'Installed WORZ.exe'
@@ -383,8 +401,8 @@ Invoke-WorzPublicBootstrap
 # SIG # Begin signature block
 # MIIHTgYJKoZIhvcNAQcCoIIHPzCCBzsCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCKSZnL92YtYWdL
-# ATiEzJT3xkcnjks6MVFlVcokE8m0b6CCBDAwggQsMIIClKADAgECAhATnEYQOxBl
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDMvwNtj+x4JjR8
+# e2VucpCEeNXuZAXeWglh9VpnbU9V1KCCBDAwggQsMIIClKADAgECAhATnEYQOxBl
 # nEQlh/r+4hbDMA0GCSqGSIb3DQEBCwUAMC4xLDAqBgNVBAMMI1dPUlogTG9jYWwg
 # RGV2ZWxvcG1lbnQgQ29kZSBTaWduaW5nMB4XDTI2MDgzMTE3NTI0MVoXDTI5MDgz
 # MTE4MDI0MVowLjEsMCoGA1UEAwwjV09SWiBMb2NhbCBEZXZlbG9wbWVudCBDb2Rl
@@ -410,15 +428,15 @@ Invoke-WorzPublicBootstrap
 # AnACAQEwQjAuMSwwKgYDVQQDDCNXT1JaIExvY2FsIERldmVsb3BtZW50IENvZGUg
 # U2lnbmluZwIQE5xGEDsQZZxEJYf6/uIWwzANBglghkgBZQMEAgEFAKCBhDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCB3
-# qP2Z2WeZgBFq6BOGzuovpztOb71gKC8rvaIpj4orvDANBgkqhkiG9w0BAQEFAASC
-# AYAr9WZbL0ESCvDbVGqgOcF424tdlpdrhVWOtfGSG+GACTOXTGhsIDvGbpT+5Sm3
-# 2rGlR1VC7WTHMPucT5JoEksqWcK3nxukj3cwWJP0b0/ZeRLvYeoTSKuCrLkVZ25U
-# JzUxCI7vAwRGlS5QVw5ntwQNYDNBFLxElqj64enoH8guxUTwXI29oN8aXiSCILd6
-# w80cOd0G0AminKGSF4tYwXKysCa42sbvLrtSeJsZH1SJ3txX2A4ftASsb5+HHdiM
-# BBFjGyKTEJyw9LTE7+ogGl4qHLpuQ/wwMeBIjjNunQIekEJgCfpNwTMAOEUywwvl
-# kLoW6nPKKLxq2casrpyJTBOg2RhrOZqOHLAQIGl4bPYPtd1/f82vIeqT8wJi6VYq
-# p27zqaSxFA4/9yRRtCEXVx6GSQ3vnvJf5cwIbRs/7XunLytfnYRztAgN+/CWi0cL
-# KHeeuOvhJgWgypRD/m6ZofazlyP6m2MwGCKltxZY85GhEMM/K3bw4Dgx4FvEpWGy
-# AnQ=
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDF
+# +hJO4mwu3+L27V2QcLXcMTlflbb+RU7IwygRe3DVIjANBgkqhkiG9w0BAQEFAASC
+# AYA8TkFKbvm4IUsMYz7yWR9FArs78/qTNoFeFxH+g4AT38zo5kfsZUVrmISiewk/
+# Oba+xol8KpGBCl5FPGBodrQHRYcv+U8v2qiEGnLwoEbRwtmIGgqO4QI//rfhjyJ5
+# 7QExOQB4UrzLwNz66l6WUqXTI034ghZuIH47p0n4vosFnGBNHyNWvHKz9U9nRCSp
+# t+Lf3AgcNjIA4Ljqb+2G+NdG6+qR2byMet90fL/rsTrVZB9lVySaOxCHg49LWveI
+# HL5aa1mmN1L9wGS3k37F7GZtUu96yCDuScUB3EjCjqFr2xjDD8fdUSS6oNcCkVm7
+# SqJhuMMQ71wR/n6GVsrIjEuSjTLzZAmKmoYsQ0P8bfLg/iboIaK/BPPf8Z0dDfIX
+# CDWsiz5eaWJp63i1gRMPzVXmp28gYxYWsLIYdyf+22oVj+6z0r/lFMgWen0FnLlP
+# H8lbF7HCBDOZopuOP+FJfwMx1XwUAa+ALdoIhw06PYX9iK0tmIqatbAwOaQABEXE
+# iHw=
 # SIG # End signature block

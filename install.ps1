@@ -3,7 +3,9 @@ param(
     [switch]$AcceptLicense,
     [switch]$Silent,
     [ValidateSet('none', 'auto', 'codex', 'claude-code', 'antigravity', 'generic-mcp')]
-    [string]$Connect = 'none'
+    [string]$Connect = 'none',
+    [ValidatePattern('^v\d+\.\d+\.\d+-alpha\.\d+$')][string]$ReleaseTag,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$ExpectedManifestSha256
 )
 
 $ErrorActionPreference = 'Stop'
@@ -173,6 +175,14 @@ function Get-LatestWorzAlphaRelease($Headers) {
     return $release[0]
 }
 
+function Get-WorzSelectedAlphaRelease($Headers, [string]$Tag) {
+    if ([string]::IsNullOrWhiteSpace($Tag)) { return Get-LatestWorzAlphaRelease -Headers $Headers }
+    Assert ($Tag -match '^v\d+\.\d+\.\d+-alpha\.\d+$') 'invalid requested release tag.'
+    $release = Invoke-RestMethod -Method Get -Uri ($ApiRoot + '/releases/tags/' + $Tag) -Headers $Headers
+    Assert ($release.prerelease -and -not $release.draft -and [string]$release.tag_name -ceq $Tag) 'the exact requested published prerelease was not found.'
+    return $release
+}
+
 function Get-WorzExpectedReleaseAssets([string]$Version) {
     return @(
         "WORZ-$Version-windows-x64-setup.exe",
@@ -312,6 +322,7 @@ function Invoke-WorzPublicBootstrap {
     Assert ($env:PROCESSOR_ARCHITECTURE -eq 'AMD64') 'only the AMD64 process architecture is supported.'
     if ($Silent -and -not $AcceptLicense) { Fail '-Silent requires explicit -AcceptLicense.' }
 
+    Assert ([string]::IsNullOrWhiteSpace($ReleaseTag) -eq [string]::IsNullOrWhiteSpace($ExpectedManifestSha256)) 'exact release selection requires both ReleaseTag and ExpectedManifestSha256.'
     $tempRoot = New-WorzBootstrapTempRoot
     try {
         $headers = @{
@@ -319,7 +330,7 @@ function Invoke-WorzPublicBootstrap {
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
         }
-        $release = Get-LatestWorzAlphaRelease -Headers $headers
+        $release = Get-WorzSelectedAlphaRelease -Headers $headers -Tag $ReleaseTag
         $tag = [string]$release.tag_name
         Assert ($tag -match '^v\d+\.\d+\.\d+-alpha\.\d+$') "invalid prerelease tag: $tag"
         $version = $tag.Substring(1)
@@ -334,6 +345,9 @@ function Invoke-WorzPublicBootstrap {
         }
         $manifestPath = Join-Path $tempRoot 'release-manifest.json'
         $manifestSignaturePath = Join-Path $tempRoot 'release-manifest.p7s'
+        if ($ExpectedManifestSha256) {
+            Assert ($downloadEvidence['release-manifest.json'].Sha256 -ceq $ExpectedManifestSha256.ToUpperInvariant()) 'requested release manifest SHA-256 differs; installation stopped.'
+        }
         Assert-SamePublisher -Identity (Get-DetachedManifestSigner -ManifestPath $manifestPath -SignaturePath $manifestSignaturePath) -Label 'Release manifest'
         $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
         Assert-WorzReleaseManifest -Manifest $manifest -Tag $tag -Version $version -ExpectedAssets $expectedAssets -AssetMap $assetMap
@@ -401,8 +415,8 @@ Invoke-WorzPublicBootstrap
 # SIG # Begin signature block
 # MIIHTgYJKoZIhvcNAQcCoIIHPzCCBzsCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDMvwNtj+x4JjR8
-# e2VucpCEeNXuZAXeWglh9VpnbU9V1KCCBDAwggQsMIIClKADAgECAhATnEYQOxBl
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDKV6F7ZjvIR7u8
+# 7kyd35hkcl1u/DH8vCWEOQpzcJZW66CCBDAwggQsMIIClKADAgECAhATnEYQOxBl
 # nEQlh/r+4hbDMA0GCSqGSIb3DQEBCwUAMC4xLDAqBgNVBAMMI1dPUlogTG9jYWwg
 # RGV2ZWxvcG1lbnQgQ29kZSBTaWduaW5nMB4XDTI2MDgzMTE3NTI0MVoXDTI5MDgz
 # MTE4MDI0MVowLjEsMCoGA1UEAwwjV09SWiBMb2NhbCBEZXZlbG9wbWVudCBDb2Rl
@@ -428,15 +442,15 @@ Invoke-WorzPublicBootstrap
 # AnACAQEwQjAuMSwwKgYDVQQDDCNXT1JaIExvY2FsIERldmVsb3BtZW50IENvZGUg
 # U2lnbmluZwIQE5xGEDsQZZxEJYf6/uIWwzANBglghkgBZQMEAgEFAKCBhDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDF
-# +hJO4mwu3+L27V2QcLXcMTlflbb+RU7IwygRe3DVIjANBgkqhkiG9w0BAQEFAASC
-# AYA8TkFKbvm4IUsMYz7yWR9FArs78/qTNoFeFxH+g4AT38zo5kfsZUVrmISiewk/
-# Oba+xol8KpGBCl5FPGBodrQHRYcv+U8v2qiEGnLwoEbRwtmIGgqO4QI//rfhjyJ5
-# 7QExOQB4UrzLwNz66l6WUqXTI034ghZuIH47p0n4vosFnGBNHyNWvHKz9U9nRCSp
-# t+Lf3AgcNjIA4Ljqb+2G+NdG6+qR2byMet90fL/rsTrVZB9lVySaOxCHg49LWveI
-# HL5aa1mmN1L9wGS3k37F7GZtUu96yCDuScUB3EjCjqFr2xjDD8fdUSS6oNcCkVm7
-# SqJhuMMQ71wR/n6GVsrIjEuSjTLzZAmKmoYsQ0P8bfLg/iboIaK/BPPf8Z0dDfIX
-# CDWsiz5eaWJp63i1gRMPzVXmp28gYxYWsLIYdyf+22oVj+6z0r/lFMgWen0FnLlP
-# H8lbF7HCBDOZopuOP+FJfwMx1XwUAa+ALdoIhw06PYX9iK0tmIqatbAwOaQABEXE
-# iHw=
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDZ
+# 23q1Ico1P+AlI7FqGqGY52l2fZxjS8cLU2QmD4sqWzANBgkqhkiG9w0BAQEFAASC
+# AYCFWr64SmGY6k/LvYNAr45GXPKpksjTOg6RKpltfe3n4Zf+2Q6Dl6ZVMwCNSP7L
+# C87qR2gBaA5BD/7eWur3oqVa8C0JHaOZvXvgoW+LfRbIyjGvUKoYvVpEdGac4LMq
+# /Ht98OXhLy3gtsC9Vek5FATn8XergDwWXPjifJ/t75zXjy3Xi0TrbMaT0BWuKxK1
+# PtWcAubsfbu2H5CLo90pnKaqyo+QmU5jgcxId00WQfs2KvEmxg69Ao0RbwtiETeN
+# bxO3K8uAJlYh3AT8PLbsJW2UHI2DpCjap/LgYT3pPYsF3pKU6YnJZhQICLolV4BY
+# mLFC+1+bR6N9W2+0nbJvPnBmjBW0XBiQsOU24njL845h6fCVu40UxyBCjQIQclS3
+# bmjhI0ge2KqlAaePDV00kMoMteYfF+no9VBV5b/MD8NeJ5uRwPRzYXDKcx1B6Y86
+# kEnzC7cK6igMm6A6/koXBx4LW18Cj4HhIHwaP6SWjwiBT80frD1LkJAzJea1L77O
+# U2g=
 # SIG # End signature block

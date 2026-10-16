@@ -277,10 +277,10 @@ function Get-WorzInstalledExecutable {
     return [string]$executable
 }
 
-function Open-WorzAgentConnection([string]$ExecutablePath, [string]$Host, $Receipt) {
-    if ($Host -eq 'none') { return }
+function Open-WorzAgentConnection([string]$ExecutablePath, [string]$ConnectionHost, $Receipt) {
+    if ($ConnectionHost -eq 'none') { return }
     try {
-        Start-Process -FilePath $ExecutablePath -ArgumentList @('--agent-connect', $Host) | Out-Null
+        Start-Process -FilePath $ExecutablePath -ArgumentList @('--agent-connect', $ConnectionHost) | Out-Null
         $Receipt.activation.launched = $true
         $Receipt.activation.status = 'confirmation_opened'
         Save-InstallReceipt $Receipt
@@ -403,7 +403,7 @@ function Invoke-WorzPublicBootstrap {
             timestampUtc = [DateTime]::UtcNow.ToString('o')
         }
         Save-InstallReceipt $receipt
-        Open-WorzAgentConnection -ExecutablePath $worzExecutable -Host $Connect -Receipt $receipt
+        Open-WorzAgentConnection -ExecutablePath $worzExecutable -ConnectionHost $Connect -Receipt $receipt
         Write-Host "WORZ $version installed. Agent connection: $Connect."
     } finally {
         Remove-WorzBootstrapTempRoot -Path $tempRoot
@@ -415,8 +415,8 @@ Invoke-WorzPublicBootstrap
 # SIG # Begin signature block
 # MIIHTgYJKoZIhvcNAQcCoIIHPzCCBzsCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDKV6F7ZjvIR7u8
-# 7kyd35hkcl1u/DH8vCWEOQpzcJZW66CCBDAwggQsMIIClKADAgECAhATnEYQOxBl
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCB4cbHgc5AXaFll
+# w1wMlmwlBSd9vx6+wn31t97HEc0ovKCCBDAwggQsMIIClKADAgECAhATnEYQOxBl
 # nEQlh/r+4hbDMA0GCSqGSIb3DQEBCwUAMC4xLDAqBgNVBAMMI1dPUlogTG9jYWwg
 # RGV2ZWxvcG1lbnQgQ29kZSBTaWduaW5nMB4XDTI2MDgzMTE3NTI0MVoXDTI5MDgz
 # MTE4MDI0MVowLjEsMCoGA1UEAwwjV09SWiBMb2NhbCBEZXZlbG9wbWVudCBDb2Rl
@@ -442,15 +442,15 @@ Invoke-WorzPublicBootstrap
 # AnACAQEwQjAuMSwwKgYDVQQDDCNXT1JaIExvY2FsIERldmVsb3BtZW50IENvZGUg
 # U2lnbmluZwIQE5xGEDsQZZxEJYf6/uIWwzANBglghkgBZQMEAgEFAKCBhDAYBgor
 # BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
-# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCDZ
-# 23q1Ico1P+AlI7FqGqGY52l2fZxjS8cLU2QmD4sqWzANBgkqhkiG9w0BAQEFAASC
-# AYCFWr64SmGY6k/LvYNAr45GXPKpksjTOg6RKpltfe3n4Zf+2Q6Dl6ZVMwCNSP7L
-# C87qR2gBaA5BD/7eWur3oqVa8C0JHaOZvXvgoW+LfRbIyjGvUKoYvVpEdGac4LMq
-# /Ht98OXhLy3gtsC9Vek5FATn8XergDwWXPjifJ/t75zXjy3Xi0TrbMaT0BWuKxK1
-# PtWcAubsfbu2H5CLo90pnKaqyo+QmU5jgcxId00WQfs2KvEmxg69Ao0RbwtiETeN
-# bxO3K8uAJlYh3AT8PLbsJW2UHI2DpCjap/LgYT3pPYsF3pKU6YnJZhQICLolV4BY
-# mLFC+1+bR6N9W2+0nbJvPnBmjBW0XBiQsOU24njL845h6fCVu40UxyBCjQIQclS3
-# bmjhI0ge2KqlAaePDV00kMoMteYfF+no9VBV5b/MD8NeJ5uRwPRzYXDKcx1B6Y86
-# kEnzC7cK6igMm6A6/koXBx4LW18Cj4HhIHwaP6SWjwiBT80frD1LkJAzJea1L77O
-# U2g=
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMC8GCSqGSIb3DQEJBDEiBCBV
+# IkqxiMry1M0oFCT6zDThCHitAE9CnE5THC5C5gEAqjANBgkqhkiG9w0BAQEFAASC
+# AYBuo045otZP5biYTsSr2I79LkUjxv19FevPKJ6CNMk9ftLBhNmd5UPezHGeh0gz
+# pIqpDTr0BTEXwn4lVTONmUsQHozKZLWe7WHOP864CgPcLqmPYlr0f0AeLZdsoFKn
+# MnmURllK+nVCtJWFbRd4+Qj8TpsyW/e4y5rs7ub8UKAzNE7cqL7bfvKq3InQ40fQ
+# RVcM5suvYGMGd7Sq8cYzBVE8CTFMn+Jmrn7JOB27F86dbo1kk9kFAzFf/tYrKykS
+# SK4tYqzKIKZrTMih7eJPaKd3buTcREwbh95LRms0Uwae/NLimKmMHTFFqU1RLAxF
+# 1e1PYdQ8+R8ir6XGEY3eInH7Sq3cwig8lAr/109Fzfxx6rxbnshZ2WxhLr0hM8ib
+# Uq0XrjhhDhRG2bxLPMfrIoonN7C2uFJMNOPyokyL1YCeHIahym+Lbo3YWBKHt5P6
+# FmyKaWzCGTQNwxInj0QxM0D0NcpcjYjHGudMBC3eaiIhN5YirOGsTaxrQgaT1b6G
+# 780=
 # SIG # End signature block

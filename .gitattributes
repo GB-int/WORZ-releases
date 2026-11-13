@@ -2,3 +2,6 @@
 /install.ps1 -text
 /src/preload.cjs text eol=lf
 /resources/extensions/page-translation/content.js text eol=lf
+
+# Source-патч Electron проверяется по SHA256 без преобразования переводов строк.
+/build/electron-runtime.patch -text whitespace=-blank-at-eol

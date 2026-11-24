@@ -5,3 +5,7 @@
 
 # Source-патч Electron проверяется по SHA256 без преобразования переводов строк.
 /build/electron-runtime.patch -text whitespace=-blank-at-eol
+
+# Архивные test-SUT inputs проверяются по исходным SHA256, включая переводы строк.
+/tests/fixtures/process-lifecycle/KernelTerminalWitness.historical-7a58602e.cs -text
+/tests/fixtures/process-lifecycle/test-contour-process.historical-7a58602e.psm1 -text

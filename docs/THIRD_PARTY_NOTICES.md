@@ -23,6 +23,43 @@ Translate Web Pages 10.2.1.0 (FilipePS и участники проекта), MP
 | fd-slicer | 1.1.0 | MIT | Ограниченное чтение диапазонов файлов внутри `yauzl`. |
 | pend | 1.2.0 | MIT | Координация асинхронного чтения внутри `fd-slicer`. |
 | Voice Over Translation, `ilyhalight/voice-over-translation` | 1.11.8, commit `6ebccdef7614297dd49b8d7ef6806fbf96ef4035` | MIT | Закреплённое расширение перевода видео; текст его лицензии включён в официальную сборку. |
+| AMD FidelityFX FSR 1 и GLSL-порт SharpView | FSR 1, [коммит порта](https://github.com/skateddu/sharpview-fsr-video-upscaler/tree/e5e7b56755d123c076ce1c6eb0605721f0027c48/src/core/shaders) | MIT | Адаптированные шейдеры EASU и RCAS для видеоокна WORZ. Актуализировано 2026-11-25 09:59 +03:00. |
+
+### Шейдеры Anime4K
+
+Актуализировано 2026-11-26. WORZ использует шейдеры Restore CNN M, Restore CNN Soft M и Upscale CNN x2 M из [Anime4K v4.0.1](https://github.com/bloc97/Anime4K/releases/tag/v4.0.1). Они выполняются через WebGL2 в отдельном окне. Уведомление MIT и авторские права bloc97 (2019–2021) сохранены перед каждым шейдером.
+
+### Real-ESRGAN и NVIDIA TensorRT RTX
+
+Актуализировано 2026-11-27 21:01 +03:00. Веса Real-ESRGAN AnimeVideo v3 поставляются с уведомлением BSD-3-Clause в `browser-video-window/LICENSE.Real-ESRGAN.txt`. В Windows x64 сборках с режимом TensorRT RTX используется подписанная NVIDIA библиотека `tensorrt_rtx_1_7.dll` версии 1.7.1.116. Библиотека используется видеоворкером WORZ. [Лицензия NVIDIA TensorRT RTX](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/reference/sla.html).
+
+### Лицензия шейдеров FSR 1 и порта SharpView
+
+Добавлено 2026-11-25 09:59 +03:00.
+
+Copyright (c) 2026 Andrea Cadeddu
+
+Copyright (c) 2021 Advanced Micro Devices, Inc. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+### Уведомления в сборке
 
 Установленная Electron-сборка содержит собственные уведомления Electron `LICENSE` и `LICENSES.chromium.html`. Внутри `app.asar` файл `BUNDLED_DEPENDENCY_LICENSES.txt` формируется из esbuild metafile и содержит полный локальный текст лицензии каждого npm-пакета, попавшего в minified runtime bundle, а также Lucide. Сборка завершается ошибкой, если у найденного пакета нет версии, типа лицензии или локального `LICENSE*`. Путь `resources/extensions/vot/src/extension` является закреплённым compiled third-party payload VOT и разрешён только внутри этой точной границы; это не исходное дерево WORZ. Пользовательская лицензия WORZ устанавливается как `WORZ-LICENSE.txt` и публикуется как `LICENSE` рядом с release assets. Provenance и контрольные суммы закреплённого VOT artifact хранятся Правообладателем и сверяются при подготовке официальной сборки. Актуализировано: 2026-09-01 21:06:30 +03:00.
 
